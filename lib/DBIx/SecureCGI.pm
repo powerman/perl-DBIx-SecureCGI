@@ -6,7 +6,7 @@ use utf8;
 use feature ':5.10';
 use Carp;
 
-use version; our $VERSION = qv('2.0.1');    # REMINDER: update Changes
+use version; our $VERSION = qv('2.0.2');    # REMINDER: update Changes
 
 # REMINDER: update dependencies in Build.PL
 use DBI;
@@ -641,9 +641,9 @@ DBIx::SecureCGI - Secure conversion of CGI params hash to SQL
 
 =head1 DESCRIPTION
 
-This module let you use unmodified hash with CGI params to make (or just
-generate) SQL queries to MySQL database in B<easy and secure> way. To make
-this magic possible there are some limitations and requirements:
+This module let you use B<hash with CGI params> to make (or just generate)
+SQL queries to MySQL database in B<easy and secure> way. To make this
+magic possible there are some limitations and requirements:
 
 =over
 
@@ -656,59 +656,66 @@ this magic possible there are some limitations and requirements:
 =back
 
 Example: if all CGI params (including unrelated to db table 'Table') are
-in C< %Q >, then C<< $dbh->Select('Table', \%Q); >> will execute any
-simple C<SELECT> query from the table C<Table> (defined by user-supplied
-parameters in C< %Q >) and C<< $dbh->Select('Table', {%Q, id_user=>$id}); >>
+in C<%Q>, then:
+
+ @rows = $dbh->Select('Table', \%Q);
+
+will execute any simple C<SELECT> query from the table C<Table> (defined
+by user-supplied parameters in C<%Q>); and this:
+
+ @user_rows = $dbh->Select('Table', {%Q, id_user=>$id});
+
 will make any similar query limited to records with C<id_user> column
-value C< $id > (thus allowing user to fetch any or B<his own> records).
+value C<$id> (thus allowing user to fetch any or B<his own> records).
 
 The module is intended for use only with a fairly simple tables and simple
 SQL queries. More advanced queries usually can be generated manually with
-help of C<< $dbh->GetSQL() >> or you can just use plain DBI methods.
+help of L</GetSQL> or you can just use plain L<DBI> methods.
 
-Also is support non-blocking SQL queries using L<AnyEvent::DBI::MySQL> and
-thus can be effectively used with event-based CGI frameworks like
-L<Mojolicious> or with event-based FASTCGI servers like C<FCGI::EV>.
+Also it support B<non-blocking SQL queries> using L<AnyEvent::DBI::MySQL>
+and thus can be effectively used with event-based CGI frameworks like
+L<Mojolicious> or with event-based FastCGI servers like L<FCGI::EV>.
 
-Finally, it can be used in non-CGI environment, just to make ease using DBI.
+Finally, it can be used in non-CGI environment, as simplified interface to
+L<DBI>.
 
 =head2 SECURITY OVERVIEW
 
 At a glance, generating SQL queries based on untrusted parameters sent by
 user to your CGI looks very unsafe. But interface of this module designed
-to make it safe - while you conform to some L</"CONVENTIONS"> and follow
+to make it safe - while you conform to some L</CONVENTIONS> and follow
 some simple guidelines.
 
 =over
 
-=item * User have to control over query type (SELECT/INSERT/…).
+=item * B<User have no control over query type (SELECT/INSERT/…)>
 
 It's defined by method name you call.
 
-=item * User have no control over tables involved in SQL query.
+=item * B<User have no control over tables involved in SQL query>
 
 It's defined by separate (first) parameter in all methods, unrelated to
 hash with CGI parameters.
 
-=item * User have no direct control over SQL query.
+=item * B<User have no direct control over SQL query>
 
 All values from hash are either quoted before inserting into SQL, or
 checked using very strict regular expressions if it's impossible to quote
 them (like for date/time C<INTERVAL> values).
 
-=item * You can block/control access to "secure" fields in all tables.
+=item * B<You can block/control access to "secure" fields in all tables>
 
-Name all such fields in some special way (like beginning with C<_>) and
-when receiving CGI parameters immediately B<delete all> keys in hash which
-match these fields (i.e. all keys beginning with C<_>). Later you can
+Name all such fields in some special way (like beginning with "C<_>") and
+when receiving CGI parameters immediately B<delete all keys> in hash which
+match these fields (i.e. all keys beginning with "C<_>"). Later you can
 analyse user's request and manually add to hash keys for these fields
 before call method to execute SQL query.
 
-=item * You can limit user's access to some subset of records.
+=item * B<You can limit user's access to some subset of records>
 
-Just instead of using plain C< \%Q > as parameter for methods use
+Just instead of using plain C<\%Q> as parameter for methods use
 something like C<< { %Q, id_user => $id } >> - this way user will be
-limited to records with C< $id > value in C< id_user > column.
+limited to records with C<$id> value in C<id_user> column.
 
 =back
 
@@ -725,15 +732,12 @@ Each CGI parameter belongs to one of three categories:
 
 =over
 
-=item * related to some table's field in db
+=item * B<related to some table's field in db:> C<fieldname>,
+C<fieldname__funcname>
 
-C<fieldname> AND C<fieldname__funcname>
+=item * B<control command:> C<__commandname>
 
-=item * control command for DBIx::SecureCGI
-
-C<__command>
-
-=item * your app's parameter
+=item * B<your app's parameter>
 
 =back
 
@@ -741,27 +745,28 @@ It's recommended to name fields in db beginning with B<lowercase> letter
 or B<underscore>, and name your app's parameters beginning with
 B<Uppercase> letter to avoid occasional clash with field name.
 
-To protect some fields (like C<balance> or C<privileges>) from
+To protect some fields (like "C<balance>" or "C<privileges>") from
 uncontrolled access you can use simple convention: name these fields in db
-beginning with C<_>; when receiving CGI params just B<delete all with
-names beginning with> C<_> - thus it won't be possible to access these
-fields from CGI params. DBIx::SecureCGI doesn't know about this and
-handle these fields as usual fields, so you should later add needed keys
-for these fields into hash you'll give to DBIx::SecureCGI methods.
-This way all operations on these fields will be controlled by your app.
+beginning with "C<_>"; when receiving CGI params just
+B<delete all with names beginning with> "C<_>" - thus it won't be possible
+to access these fields from CGI params. This module doesn't know about
+these protected fields and handle them just as usual fields. So, you
+should later add needed keys for these fields into hash before calling
+methods to execute SQL query. This way all operations on these fields will
+be controlled by your app.
 
 You can use any other similar naming scheme which won't conflict with
-L</"CONVENTIONS"> below - DBIx::SecureCGI will analyse db scheme (and
+L</CONVENTIONS> below - DBIx::SecureCGI will analyse db scheme (and
 cache it for speed) to detect which keys match field names.
 
 CGI params may have several values. In hash, keys for such params must
-have ARRAYREF value. DBIx::SecureCGI support this only for keys which
-contain C<__>. Depending on used CGI framework you may need to convert
-existing CGI parameters in this format.
+have C<ARRAYREF> value. DBIx::SecureCGI support this only for keys which
+contain "C<__>" (double underscore). Depending on used CGI framework you
+may need to convert existing CGI parameters into this format.
 
 Error handling: all unknown keys will be silently ignored, all other
 errors (unable to detect key for joining table, field without
-C<__funcname> have ARRAYREF value, unknown C<__funcname> function, etc.)
+"C<__funcname>" have C<ARRAYREF> value, unknown "C<__funcname>" function, etc.)
 will return usual DBI errors (or throw exceptions when C<< {RaiseError=>1} >>.
 
 =head2 CONVENTIONS
@@ -774,11 +779,10 @@ Each table's B<first field> must be a C<PRIMARY KEY>.
 
 =over
 
-MOTIVATION: DBIx::SecureCGI uses simplified analyse of db scheme and
-suppose first field in every table is a C<PRIMARY KEY>. To add support for
-complex primary keys or tables without primary keys we should first define
-how C<< $dbh->ID() >> should handle them and how to automatically join
-such tables.
+MOTIVATION: This module use simplified analyse of db scheme and suppose
+first field in every table is a C<PRIMARY KEY>. To add support for complex
+primary keys or tables without primary keys we should first define how
+L</ID> should handle them and how to automatically join such tables.
 
 =back
 
@@ -789,8 +793,8 @@ at least in one of them and have B<same name in both tables>.
 
 =over
 
-So, don't name your primary key C<id> if you plan to join this table with
-another - name it like C<id_thistable> or C<thistableId>.
+So, don't name your primary key "C<id>" if you plan to join this table with
+another - name it like "C<id_thistable>" or "C<thistableId>".
 
 =back
 
@@ -805,26 +809,26 @@ DBI error will be returned.
 
 =over
 
-MOTIVATION: Let DBIx::SecureCGI automatically join tables.
+MOTIVATION: Let this module automatically join tables.
 
 =back
 
 =item *
 
-Field names must not contain C<__> (two adjoined underscore).
+Field names must not contain "C<__>" (two adjoined underscore).
 
 =over
 
-MOTIVATION: Distinguish special params for DBIx::SecureCGI from field
-names. Also, DBIx::SecureCGI sometimes create aliases for fields
-and their names begins with C<__>.
+MOTIVATION: Distinguish special commands for this module from field names.
+Also, some methods sometimes create aliases for fields and their names
+begins with "C<__>".
 
 =back
 
 =item *
 
-Hash with CGI params may contain several values (as ARRAYREF) only for key
-names containing C<__> (keys unrelated to fields may have any values).
+Hash with CGI params may contain several values (as C<ARRAYREF>) only for key
+names containing "C<__>" (keys unrelated to fields may have any values).
 
 =over
 
@@ -838,19 +842,21 @@ so it's safer to deny it.
 
 =head2 Hash to SQL convertion rules
 
-=over
+=head3 __commandname
 
-=item * __something
-
-Keys beginning with C<__> are control keys. Supported keys are:
+Keys beginning with C<__> are control commands. Supported commands are:
 
 =over
 
 =item B<__order>
 
-Define value for C<ORDER BY>. Valid values are C<"field_name"> or
-C<"field_name ASC"> or C<"field_name DESC">. Multiple values can be
-given as ARRAYREF.
+Define value for C<ORDER BY>. Valid values are:
+
+ 'field_name'
+ 'field_name ASC'
+ 'field_name DESC'
+
+Multiple values can be given as C<ARRAYREF>.
 
 =item B<__group>
 
@@ -858,109 +864,114 @@ Define value for C<GROUP BY>. Valid values are same as for B<__order>.
 
 =item B<__limit>
 
-Can have up to two numeric values (when it's ARRAYREF), set C<LIMIT>.
+Can have up to two numeric values (when it's C<ARRAYREF>), set C<LIMIT>.
 
 =item B<__force>
 
 If the value of B<__force> key is true, then it's allowed to run
-C< $dbh->Update() > and C< $dbh->Delete() > with an empty C<WHERE>. (This
-isn't a security feature, it's just for convenience to protect against
-occasional damage on database while playing with CGI parameters.)
+L</Update> and L</Delete> with an empty C<WHERE>. (This isn't a security
+feature, it's just for convenience to protect against occasional damage on
+database while playing with CGI parameters.)
 
 =back
 
-=item * fieldname__funcname
+=head3 fieldname__funcname
 
-If the key contains a C<__> then it is treated as a C<field__function>.
-If the there is no field with this name in database, this key is ignored.
-A valid key value - scalar or a reference to an array of scalars.
+If the key contains a "C<__>" then it is treated as applying function
+"C<funcname>" to field "C<fieldname>".
+If the there is no field with such name in database, this key is ignored.
+A valid key value - string/number or a reference to an array of
+strings/numbers.
 A list of available functions in this version is shown below.
 
-Unless special behavior mentioned functions handle ARRAYREF value by
+Unless special behavior mentioned functions handle C<ARRAYREF> value by
 applying itself to each value in array and joining with C<AND>.
 
-Example: C<< { html__like => ["%<P>%", "%<BR>%"] } >> will be transformed
-to C<< "html LIKE '%<P>%' AND html LIKE '%<BR>%'" >>.
+Example:
 
-Typically, such keys are used in C<WHERE>, except when C<funcname> begins
-with C<set_> - such keys will be used in C<SET>.
+ { html__like => ["%<P>%", "%<BR>%"] }
+ 
+will be transformed in SQL to
 
-=item * fieldname
+ html LIKE '%<P>%' AND html LIKE '%<BR>%'
+
+Typically, such keys are used in C<WHERE>, except when "C<funcname>" begins
+with "C<set_>" - such keys will be used in C<SET>.
+
+=head3 fieldname
 
 Other keys are treated as names of fields in database.
 If there is no field with such name, then key is ignored.
 A valid value for these keys - scalar.
 
-Example: C<< { name => "Alex" } >> will be transformed to
-C<< "name = 'Alex'" >> in SQL.
+Example:
+
+ { name => "Alex" }
+ 
+will be transformed in SQL to
+
+ name = 'Alex'
 
 Typically, such keys are used in part C<SET>, except for C<PRIMARY KEY>
-field in C<< $dbh->Update() >> - it will be placed in C<WHERE>.
-
-=back
+field in L</Update> - it will be used in C<WHERE>.
 
 
 =head1 INTERFACE
 
-=over
+=head2 Functions in DBIx::SecureCGI package
 
-=item B<DefineFunc>( $name, '%s op %s' )
+=head3 DefineFunc
 
-=item B<DefineFunc>( $name, [ qr/regexp/, '%s op %s' ] )
+ DefineFunc( $name, '%s op %s' );
+ DefineFunc( $name, [ qr/regexp/, '%s op %s' ] );
+ DefineFunc( $name, sub { … } );
 
-=item B<DefineFunc>( $name, sub { … } )
-
-Define new or replace existing function applied to fields after C<__>
+Define new or replace existing function applied to fields after "C<__>"
 delimiter.
 
 SQL expression for that function will be generated in different ways,
 depending on how you defined that function - using string, regexp+string
 or code:
 
-    $expr = sprintf '%s op %s', $field, $dbh->quote($value);
-    $expr = $value =~ /regexp/ && sprintf '%s op %s', $field, $value;
-    $expr = $code->($dbh, $field, $value);
+ $expr = sprintf '%s op %s', $field, $dbh->quote($value);
+ $expr = $value =~ /regexp/ && sprintf '%s op %s', $field, $value;
+ $expr = $code->($dbh, $field, $value);
 
 If C<$expr> will be false DBI error will be returned.
 Here is example of code implementation:
 
-    sub {
-        my ($dbh, $f, $v) = @_;
-        if (… value ok …) {
-            return sprintf '…', $f, $dbh->quote($v);
-        }
-        return;     # wrong value
-    }
-
-=back
+ sub {
+     my ($dbh, $f, $v) = @_;
+     if (… value ok …) {
+         return sprintf '…', $f, $dbh->quote($v);
+     }
+     return;     # wrong value
+ }
 
 
-=head1 INTERFACE injected into DBI
+=head2 Methods injected into DBI
 
-=over
+=head3 GetSQL
 
-=item B<GetSQL>( $table, \%Q )
-
-=item B<GetSQL>( $table, \%Q, sub { my ($SQL) = @_; … })
-
-=item B<GetSQL>( \@tables, \%Q )
-
-=item B<GetSQL>( \@tables, \%Q, sub { my ($SQL) = @_; … })
+ $SQL = GetSQL( $table,   \%Q );
+        GetSQL( $table,   \%Q, sub { my ($SQL) = @_; … } );
+ $SQL = GetSQL( \@tables, \%Q );
+        GetSQL( \@tables, \%Q, sub { my ($SQL) = @_; … } );
 
 This is helper function which will analyse (cached) database scheme for
 given tables and generate elements of SQL query for given keys in C<%Q>.
-You may use it to write own methods like C<< $dbh->Select() >> or 
-C<< $dbh->Insert() >>.
+You may use it to write own methods like L</Select> or L</Insert>.
 
-In C< %Q > keys which doesn't match field names in C< $table / @tables >
+In C<%Q> keys which doesn't match field names in C<$table> / C<@tables>
 are ignored.
 
 Names of tables and fields in all keys (except C<{Table}> and C<{ID}>)
-are escaped, field names qualified with table name (so they're ready for
-inserting into SQL query). Values of C<{Table}> and C<{ID}> should be
-escaped with C<< $dbh->quote_identifier() >> before using in SQL query.
+are already quoted, field names qualified with table name (so they're
+ready for inserting into SQL query). Values of C<{Table}> and C<{ID}>
+should be escaped with C<< $dbh->quote_identifier() >> before using in SQL
+query.
 
-Returns HASHREF with keys:
+Returns C<HASHREF> with keys:
 
 =over
 
@@ -970,42 +981,42 @@ first of the used tables
 
 =item {ID}
 
-name of C<PRIMARY KEY> field in {Table}
+name of C<PRIMARY KEY> field in C<{Table}>
 
 =item {Select}
 
 list of all field names which should be returned by C<SELECT *> excluding
 duplicated fields: if C<SELECT> used on more than one table with same
-field "fieldname" then C<{Select}> will include only name from first table
-"tablename.fieldname"; field names in C<{Select}> are joined with ","
+field "C<fieldname>" then C<{Select}> will include only name from first table
+"C<tablename.fieldname>"; field names in C<{Select}> are joined with ","
 
 =item {From}
 
-all tables joined using chosen JOIN type (INNER by default)
+all tables joined using chosen C<JOIN> type (C<INNER> by default)
 
 =item {Set}
 
 string like C< "field=value, field2=value2" > for all simple
-"field" keys in C< %Q >
+"C<fieldname>" keys in C<%Q>
 
 =item {Where}
 
-a-la {Set}, except fields joined using C<AND> and added
-"field__function" fields; if there are no fields it will be set to string
-C<"1">
+a-la C<{Set}>, except fields joined using C<AND> and added
+"C<field__function>" fields; if there are no fields it will be set to
+string C<"1">
 
 =item {UpdateWhere}
 
-a-la {Where}, except it uses only "field__function" keys plus
-one C<PRIMARY KEY> "field" key (if it exists in C< %Q >)
+a-la C<{Where}>, except it uses only "C<field__function>" keys plus
+one C<PRIMARY KEY> "C<fieldname>" key (if it exists in C<%Q>)
 
 =item {Order}
 
-string like "field1 ASC, field2 DESC" or empty string
+string like C< "field1 ASC, field2 DESC" > or empty string
 
 =item {Group}
 
-a-la {Order}
+a-la C<{Order}>
 
 =item {Limit}
 
@@ -1018,176 +1029,196 @@ and C<{SelectLimit}> will contain both numbers joined with ","
 =back
 
 
-=item B<Insert>( $table, \%Q )
+=head3 Insert
 
-=item B<Insert>( $table, \%Q, sub { my ($newid, $dbh) = @_; … }) )
+ $newid = Insert( $table, \%Q );
+          Insert( $table, \%Q, sub { my ($newid, $dbh) = @_; … } );
+
+Execute SQL query:
 
     INSERT INTO {Table} SET {Set}
 
-Return C<< $dbh->{mysql_insertid} >> on success or undef() on error.
+Return C<< $dbh->{mysql_insertid} >> on success or C<undef> on error.
 
 It's B<strongly recommended> to always use
-C<< {%Q, …, primary_key=>undef} >>, because if you didn't force
-C<primary_key> field to be C<NULL> (and thus use C<AUTO_INCREMENT>)
-then user may send CGI parameter to set it to C<-1> or C<4294967295> and
-this will result in B<DoS> because no more records can be added using
-C<AUTO_INCREMENT> into this table.
+
+ Insert( …, { %Q, …, primary_key_name=>undef }, … )
+
+because if you didn't force C<primary_key> field to be C<NULL> in SQL (and
+thus use C<AUTO_INCREMENT> value) then user may send CGI parameter to set
+it to C<-1> or C<4294967295> and this will result in B<DoS> because no
+more records can be added using C<AUTO_INCREMENT> into this table.
 
 
-=item B<InsertIgnore>( $table, \%Q )
+=head3 InsertIgnore
 
-=item B<InsertIgnore>( $table, \%Q, sub { my ($rv, $dbh) = @_; … })
+ $rv = InsertIgnore( $table, \%Q );
+       InsertIgnore( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
+
+Execute SQL query:
 
     INSERT IGNORE INTO {Table} SET {Set}
 
-Return C<$rv> (true on success or undef() on error).
+Return C<$rv> (true on success or C<undef> on error).
 
 
-=item B<Update>( $table, \%Q )
+=head3 Update
 
-=item B<Update>( $table, \%Q, sub { my ($rv, $dbh) = @_; … })
+ $rv = Update( $table, \%Q );
+       Update( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
+
+Execute SQL query:
 
     UPDATE {Table} SET {Set} WHERE {UpdateWhere} [LIMIT {Limit}]
 
-Uses in C<SET> part all fields given as C<field>, in C<WHERE> part all
-fields given as C<field__function> plus C<PRIMARY KEY> field if it was
-given as C<field>.
+Uses in C<SET> part all fields given as "C<fieldname>", in C<WHERE> part all
+fields given as "C<fieldname__funcname>" plus C<PRIMARY KEY> field if it was
+given as "C<fieldname>".
 
-Return C<$rv> (amount of modified records on success or undef() on error).
+Return C<$rv> (amount of modified records on success or C<undef> on error).
 
 To use with empty C<WHERE> part require C<< {__force=>1} >> in C<%Q>.
 
 
-=item B<Replace>( $table, \%Q )
+=head3 Replace
 
-=item B<Replace>( $table, \%Q, sub { my ($rv, $dbh) = @_; … })
+ $rv = Replace( $table, \%Q );
+       Replace( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
+
+Execute SQL query:
 
     REPLACE INTO {Table} SET {Set}
 
-Uses in C<SET> part all fields given as C<field>.
+Uses in C<SET> part all fields given as "C<fieldname>".
 
-Return C<$rv> (true on success or undef() on error).
+Return C<$rv> (true on success or C<undef> on error).
 
 
-=item B<Delete>( $table, \%Q )
+=head3 Delete
 
-=item B<Delete>( $table, \%Q, sub { my ($rv, $dbh) = @_; … })
+ $rv = Delete( $table,   \%Q );
+       Delete( $table,   \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = Delete( \@tables, \%Q );
+       Delete( \@tables, \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = Delete( undef,    \%Q );
+       Delete( undef,    \%Q, sub { my ($rv, $dbh) = @_; … } );
 
-=item B<Delete>( \@tables, \%Q )
-
-=item B<Delete>( \@tables, \%Q, sub { my ($rv, $dbh) = @_; … })
-
-=item B<Delete>( undef, \%Q )
-
-=item B<Delete>( undef, \%Q, sub { my ($rv, $dbh) = @_; … })
+Execute SQL query:
 
     DELETE FROM {Table} WHERE {Where} [LIMIT {Limit}]
 
 Delete records from C<$table> or (one-by-one) from each table in
-C<@tables>. If undef() given, then delete records from B<ALL> tables
+C<@tables>. If C<undef> given, then delete records from B<ALL> tables
 (except C<TEMPORARY>) which have B<ALL> fields mentioned in C<%Q>.
 
 To use with empty C<WHERE> part require C<< {__force=>1} >> in C<%Q>.
 
-Return C<$rv> (amount of deleted records or undef() on error).
+Return C<$rv> (amount of deleted records or C<undef> on error).
 If used to delete records from more than one table - return C<$rv>
 for last table. If error happens it will be immediately returned,
 so some tables may not be processed in this case.
 
 
-=item B<ID>( $table, \%Q )
+=head3 ID
 
-=item B<ID>( $table, \%Q, sub { my (@id) = @_; … })
+ $id = ID( $table,   \%Q );
+ @id = ID( $table,   \%Q );
+       ID( $table,   \%Q, sub { my (@id) = @_; … } );
+ $id = ID( \@tables, \%Q );
+ @id = ID( \@tables, \%Q );
+       ID( \@tables, \%Q, sub { my (@id) = @_; … } );
 
-=item B<ID>( \@tables, \%Q )
-
-=item B<ID>( \@tables, \%Q, sub { my (@id) = @_; … })
+Return result of executing this SQL query using L</Col>:
 
     SELECT {ID} FROM {From} WHERE {Where}
-    [ORDER BY {Order}] [LIMIT {SelectLimit}]
-
-Execute SQL query using C<< $dbh->Col() >>.
+        [ORDER BY {Order}] [LIMIT {SelectLimit}]
 
 
-=item B<Count>( $table, \%Q )
+=head3 Count
 
-=item B<Count>( $table, \%Q, sub { my ($count) = @_; … })
+ $count = Count( $table,   \%Q );
+          Count( $table,   \%Q, sub { my ($count) = @_; … } );
+ $count = Count( \@tables, \%Q );
+          Count( \@tables, \%Q, sub { my ($count) = @_; … } );
 
-=item B<Count>( \@tables, \%Q )
-
-=item B<Count>( \@tables, \%Q, sub { my ($count) = @_; … })
+Return result of executing this SQL query using L</Col>:
 
     SELECT count(*) __count FROM {From} WHERE {Where}
 
-Execute SQL query using C<< $dbh->Col() >>.
 
+=head3 Select
 
-=item B<Select>( $table, \%Q )
+ $row  = Select( $table,   \%Q );
+ @rows = Select( $table,   \%Q );
+         Select( $table,   \%Q, sub { my (@rows) = @_; … } );
+ $row  = Select( \@tables, \%Q );
+ @rows = Select( \@tables, \%Q );
+         Select( \@tables, \%Q, sub { my (@rows) = @_; … } );
 
-=item B<Select>( $table, \%Q, sub { my (@rows) = @_; … })
-
-=item B<Select>( \@tables, \%Q )
-
-=item B<Select>( \@tables, \%Q, sub { my (@rows) = @_; … })
+Execute one of these SQL queries (depending on using C<__group> command):
 
     SELECT * FROM {From} WHERE {Where}
-    [ORDER BY {Order}] [LIMIT {SelectLimit}]
-
+        [ORDER BY {Order}] [LIMIT {SelectLimit}]
     SELECT *, count(*) __count FROM {From} WHERE {Where} GROUP BY {Group}
-    [ORDER BY {Order}] [LIMIT {SelectLimit}]
+        [ORDER BY {Order}] [LIMIT {SelectLimit}]
 
 Instead of C<SELECT *> it uses enumeration of all fields qualified using
 table name; if same field found in several tables it's included only
 one - from first table having that field.
 
-In C<@tables> you can append C<" LEFT"> or C<" INNER"> to table name to
+In C<@tables> you can append C<' LEFT'> or C<' INNER'> to table name to
 choose C<JOIN> variant (by default C<INNER JOIN> will be used):
 
-    $dbh->Select(['TableA', 'TableB LEFT', 'TableC'], …)
+ $dbh->Select(['TableA', 'TableB LEFT', 'TableC'], …)
 
-Execute request using C<< $dbh->All() >> when called in list context or
-using C<< $dbh->Row() >> when called in scalar context.
+Return result of executing SQL query using L</All> when called in list
+context or L</Row> when called in scalar context.
 
 
-=item B<All>( $sql, @bind )
+=head3 All
 
-=item B<All>( $sql, @bind, sub { my (@rows) = @_; … })
+ @rows = All( $sql, @bind )
+         All( $sql, @bind, sub { my (@rows) = @_; … } );
 
 Shortcut for this ugly but very useful snippet:
 
-    @{ $dbh->selectall_arrayref($sql, {Slice=>{}}, @bind) }
+ @{ $dbh->selectall_arrayref($sql, {Slice=>{}}, @bind) }
 
 
-=item B<Row>( $sql, @bind )
+=head3 Row
 
-=item B<Row>( $sql, @bind, sub { my ($row) = @_; … })
+ $row = Row( $sql, @bind );
+        Row( $sql, @bind, sub { my ($row) = @_; … } );
 
 Shortcut for:
 
-    $dbh->selectrow_hashref($sql, undef, @bind)
+ $dbh->selectrow_hashref($sql, undef, @bind)
 
 If you wonder why it exists, the answer is simple: it was added circa
-2002, when there was no C<< $dbh->selectrow_hashref() >> yet and now it
-continue to exists for compatibility and to complement C<< $dbh->All() >>
-and C<< $dbh->Col() >>.
+2002, when there was no C<< $dbh->selectrow_hashref() >> and now it
+continue to exists for compatibility and to complement L</All>
+and L</Col>.
 
 
-=item B<Col>( $sql, @bind )
+=head3 Col
 
-=item B<Col>( $sql, @bind, sub { my (@col) = @_; … })
+ $col = Col( $sql, @bind );
+ @col = Col( $sql, @bind );
+        Col( $sql, @bind, sub { my (@col) = @_; … } );
 
 Shortcut for:
 
-    $scalar = $dbh->selectcol_arrayref($sql, undef, @bind)->[0]
-    @array  = @{ $dbh->selectcol_arrayref($sql, undef, @bind) }
+ $col = $dbh->selectcol_arrayref($sql, undef, @bind)->[0];
+ @col = @{ $dbh->selectcol_arrayref($sql, undef, @bind) };
 
 
-=item C<SecureCGICache>()
+=head3 SecureCGICache
 
-=item C<SecureCGICache>( $new_cache )
+ $cache = SecureCGICache();
+ $cache = SecureCGICache( $new_cache );
 
-Fetch (or set when C<$new_cache> given) HASHREF with cached results of
-C<DESC tablename> SQL queries for all tables used previous in any methods.
+Fetch (or set when C<$new_cache> given) C<HASHREF> with cached results of
+"C<DESC tablename>" SQL queries for all tables used previous in any methods.
 
 You may need to reset cache (by using C<{}> as C<$new_cache> value) if
 you've changed scheme for tables already accessed by any method or if you
@@ -1198,31 +1229,34 @@ connected to same database (like in event-based environments) it may make
 sense to share same cache for all C<$dbh>.
 
 
-=item B<TableInfo>( $table, sub { my ($cache) = @_; … })
+=head3 TableInfo
 
-=item B<TableInfo>( \@tables, sub { my ($cache) = @_; … })
+ $cache = TableInfo( $table );
+          TableInfo( $table,   sub { my ($cache) = @_; … } );
+ $cache = TableInfo( \@tables );
+          TableInfo( \@tables, sub { my ($cache) = @_; … } );
 
-Ensure C<DESC tablename> for all C<$table / @tables> is cached.
+Ensure "C<DESC tablename>" for all C<$table> / C<@tables> is cached.
 
-Return C<< $dbh->SecureCGICache() >> on success or undef() on error.
-
-
-=item B<ColumnInfo>( $table, sub { my ($desc) = @_; … })
-
-Ensure C<DESC $table> is cached.
-
-Return C<< $dbh->All("DESC $table") >> on success or undef() on error.
+Return same as L</SecureCGICache> on success or C<undef> on error.
 
 
-=back
+=head3 ColumnInfo
+
+ $desc = ColumnInfo( $table );
+         ColumnInfo( $table, sub { my ($desc) = @_; … } );
+
+Ensure "C<DESC $table>" is cached.
+
+Return result of C<< $dbh->All("DESC $table") >> on success or C<undef> on
+error.
 
 
 =head1 __FUNCTIONS for fields
 
-These functions can be added and replaced using
-C<< DBIx::SecureCGI::DefineFunc() >>.
+These functions can be added and replaced using L</DefineFunc>.
 
-Functions which can be used in C<%Q> as C<fieldname_funcname>:
+Functions which can be used in C<%Q> as "C<fieldname_funcname>":
 
 =over
 
@@ -1267,26 +1301,28 @@ where
  field <= DATE_ADD(NOW(), INTERVAL value)
  field >= DATE_ADD(NOW(), INTERVAL value)
 
-value must match C</^-?\d+ (?:SECOND|MINUTE|HOUR|DAY|MONTH|YEAR)$/>
+value must match:
+
+ /^-?\d+ (?:SECOND|MINUTE|HOUR|DAY|MONTH|YEAR)$/
 
 =item B<set_add>
 
  field = field + value
 
-When used in C<< $dbh->Update() >> it will be in C<SET> instead of C<WHERE>.
-It doesn't make sense to use this function with C<< $dbh->Insert() >>,
-C<< $dbh->InsertIgnore() >> or C<< $dbh->Replace() >>.
+When used in L</Update> it will be in C<SET> instead of C<WHERE>.
+It doesn't make sense to use this function with L</Insert>,
+L</InsertIgnore> or L</Replace>.
 
 =item B<set_date>
 
  field = NOW()
  field = DATE_ADD(NOW(), INTERVAL value)
 
-If it's value is (case-insensitive) string C<"NOW"> then it'll use
+If it's value is (case-insensitive) string C<'NOW'> then it'll use
 C<NOW()> else it will use C<DATE_ADD(…)>.
 
-When used in C<< $dbh->Insert() >>, C<< $dbh->InsertIgnore() >>,
-C<< $dbh->Update() >> and C<< $dbh->Replace() >> it will be in C<SET>.
+When used in L</Insert>, L</InsertIgnore>, L</Update> and L</Replace> it
+will be in C<SET>.
 
 =back
 
@@ -1297,20 +1333,22 @@ No bugs have been reported.
 
 Only MySQL supported.
 
-It's impossible to change C<PRIMARY KEY> using C<< $dbh->Update() >> with:
+It's impossible to change C<PRIMARY KEY> using L</Update> with:
 
  { id => $new_id, id__eq => $old_id }
 
-because both C<id> and C<id__eq> will be in C<WHERE> part:
+because both "C<id>" and "C<id__eq>" will be in C<WHERE> part:
 
  SET id = $new_id WHERE id = $new_id AND id = $old_id
 
 and if we won't add C<< 'id => $new_id' >> in C<WHERE> part if we have
 C< 'id__eq' >, then we'll have do use this
-C<< '($table, {%Q, id_user=>$S{id_user}, id_user__eq=>$S{id_user})' >>
+
+ $dbh->Func($table, {%Q, id_user=>$S{id_user}, id_user__eq=>$S{id_user})
+
 in B<all> CGI requests to protect against attempt to read someone else's
-records or change own records's id_user field by using C< 'id_user' >
-or C< 'id_user__eq' > CGI params.
+records or change own records's id_user field by using C<'id_user'>
+or C<'id_user__eq'> CGI params.
 
 
 =head1 SUPPORT
