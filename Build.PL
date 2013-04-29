@@ -29,6 +29,8 @@ my $builder = $class->new(
         'version'               => '0.77',
         'DBI'                   => 0,
         'DBD::mysql'            => 0,
+        'AnyEvent'              => 0,
+        'AnyEvent::DBI::MySQL'  => '1.0.2',
     },
     test_requires => {
         'Test::More'            => 0,
@@ -38,9 +40,6 @@ my $builder = $class->new(
         'Test::Pod'             => '1.22',
         'Test::Pod::Coverage'   => '1.08',
         'Pod::Coverage'         => '0.18',
-        'Time::Local'           => 0,
-        'AnyEvent'              => 0,
-        'AnyEvent::DBI::MySQL'  => '1.0.2',
     },
 #     add_to_cleanup     => [ 'DBIx-SecureCGI-*' ],
     create_makefile_pl => 'traditional',

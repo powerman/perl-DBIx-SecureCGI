@@ -6,7 +6,7 @@ use utf8;
 use feature ':5.10';
 use Carp;
 
-use version; our $VERSION = qv('2.0.2');    # REMINDER: update Changes
+use version; our $VERSION = qv('2.0.3');    # REMINDER: update Changes
 
 # REMINDER: update dependencies in Build.PL
 use DBI;
@@ -844,7 +844,7 @@ so it's safer to deny it.
 
 =head3 __commandname
 
-Keys beginning with C<__> are control commands. Supported commands are:
+Keys beginning with "C<__>" are control commands. Supported commands are:
 
 =over
 
@@ -875,6 +875,17 @@ database while playing with CGI parameters.)
 
 =back
 
+Examples:
+
+ my @rows = $dbh->Select('Table', {
+    age__ge => 20,
+    age__lt => 30,
+    __group => 'age',
+    __order => ['age DESC', 'fname'],
+    __limit => 5,
+ });
+ $dbh->Delete('Table', { __force => 1 });
+
 =head3 fieldname__funcname
 
 If the key contains a "C<__>" then it is treated as applying function
@@ -889,8 +900,8 @@ applying itself to each value in array and joining with C<AND>.
 
 Example:
 
- { html__like => ["%<P>%", "%<BR>%"] }
- 
+ { html__like => ['%<P>%', '%<BR>%'] }
+
 will be transformed in SQL to
 
  html LIKE '%<P>%' AND html LIKE '%<BR>%'
@@ -906,7 +917,7 @@ A valid value for these keys - scalar.
 
 Example:
 
- { name => "Alex" }
+ { name => 'Alex' }
  
 will be transformed in SQL to
 
@@ -918,13 +929,13 @@ field in L</Update> - it will be used in C<WHERE>.
 
 =head1 INTERFACE
 
-=head2 Functions in DBIx::SecureCGI package
+=head2 Functions
 
 =head3 DefineFunc
 
- DefineFunc( $name, '%s op %s' );
- DefineFunc( $name, [ qr/regexp/, '%s op %s' ] );
- DefineFunc( $name, sub { … } );
+ DBIx::SecureCGI::DefineFunc( $name, '%s op %s' );
+ DBIx::SecureCGI::DefineFunc( $name, [ qr/regexp/, '%s op %s' ] );
+ DBIx::SecureCGI::DefineFunc( $name, sub { … } );
 
 Define new or replace existing function applied to fields after "C<__>"
 delimiter.
@@ -953,10 +964,10 @@ Here is example of code implementation:
 
 =head3 GetSQL
 
- $SQL = GetSQL( $table,   \%Q );
-        GetSQL( $table,   \%Q, sub { my ($SQL) = @_; … } );
- $SQL = GetSQL( \@tables, \%Q );
-        GetSQL( \@tables, \%Q, sub { my ($SQL) = @_; … } );
+ $SQL = $dbh->GetSQL( $table,   \%Q );
+        $dbh->GetSQL( $table,   \%Q, sub { my ($SQL) = @_; … } );
+ $SQL = $dbh->GetSQL( \@tables, \%Q );
+        $dbh->GetSQL( \@tables, \%Q, sub { my ($SQL) = @_; … } );
 
 This is helper function which will analyse (cached) database scheme for
 given tables and generate elements of SQL query for given keys in C<%Q>.
@@ -973,66 +984,69 @@ query.
 
 Returns C<HASHREF> with keys:
 
-=over
+ {Table}        first of the used tables
+ {ID}           name of PRIMARY KEY field in {Table}
+ {Select}       list of all field names which should be returned by
+                'SELECT *' excluding duplicated fields (when field with
+                same name exist in many tables only field from first table
+                will be returned); field names in {Select} are joined with ","
+ {From}         all tables joined using chosen JOIN type (INNER by default)
+ {Set}          string like "field=value, field2=value2" for all simple
+                "fieldname" keys in %Q
+ {Where}        a-la {Set}, except fields joined using "AND" and added
+                "field__function" fields; if there are no fields it will
+                be set to string "1"
+ {UpdateWhere}  a-la {Where}, except it uses only "field__function" keys
+                plus one PRIMARY KEY "fieldname" key (if it exists in %Q)
+ {Order}        string like "field1 ASC, field2 DESC" or empty string
+ {Group}        a-la {Order}
+ {Limit}        set to value of __limit if it contain one number
+ {SelectLimit}  set to value of __limit if it contain one number,
+                or to values of __limit joined with "," if it contain
+                two numbers
 
-=item {Table}
+Example :
 
-first of the used tables
+ CREATE TABLE A (
+    id_a    INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    i       INT NOT NULL
+ );
+ CREATE TABLE B (
+    id_b    INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_a    INT NOT NULL,
+    s       VARCHAR(255) NOT NULL
+ );
 
-=item {ID}
+ $SQL = $dbh->GetSQL(['A', 'B LEFT'], {
+    id_a        => 3,
+    i           => 10,
+    s           => 'str',
+    id_b__gt    => 5,
+    __group     => 'i',
+    __order     => ['s DESC', 'i'],
+    __limit     => [50,10],
+ });
 
-name of C<PRIMARY KEY> field in C<{Table}>
-
-=item {Select}
-
-list of all field names which should be returned by C<SELECT *> excluding
-duplicated fields: if C<SELECT> used on more than one table with same
-field "C<fieldname>" then C<{Select}> will include only name from first table
-"C<tablename.fieldname>"; field names in C<{Select}> are joined with ","
-
-=item {From}
-
-all tables joined using chosen C<JOIN> type (C<INNER> by default)
-
-=item {Set}
-
-string like C< "field=value, field2=value2" > for all simple
-"C<fieldname>" keys in C<%Q>
-
-=item {Where}
-
-a-la C<{Set}>, except fields joined using C<AND> and added
-"C<field__function>" fields; if there are no fields it will be set to
-string C<"1">
-
-=item {UpdateWhere}
-
-a-la C<{Where}>, except it uses only "C<field__function>" keys plus
-one C<PRIMARY KEY> "C<fieldname>" key (if it exists in C<%Q>)
-
-=item {Order}
-
-string like C< "field1 ASC, field2 DESC" > or empty string
-
-=item {Group}
-
-a-la C<{Order}>
-
-=item {Limit}
-
-=item {SelectLimit}
-
-Both set to values of C<__limit> if it contain one number;
-if C<__limit> contain two numbers, then C<{Limit}> will be empty,
-and C<{SelectLimit}> will contain both numbers joined with ","
-
-=back
+ # now %$SQL have these values:
+ # (backticks added by $dbh->quote_identifier() around all table/field
+ # names omitted for readability)
+ Table       => 'A'
+ ID          => 'id_a'
+ Select      => 'A.id_a, A.i, B.id_b, B.s'
+ From        => 'A LEFT JOIN B ON (B.id_a = A.id_a)'
+ Set         => 'B.s = "str",    A.id_a = 3,    A.i = 10'
+ Where       => 'B.s = "str" AND A.id_a = 3 AND A.i = 10 AND B.id_b > 5'
+ UpdateWhere => '                A.id_a = 3              AND B.id_b > 5'
+ Group       => 'A.i'
+ Order       => 'B.s DESC, A.i'
+ Limit       => ''
+ SelectLimit => '50,10'
 
 
 =head3 Insert
 
- $newid = Insert( $table, \%Q );
-          Insert( $table, \%Q, sub { my ($newid, $dbh) = @_; … } );
+ $newid = $dbh->Insert( $table, \%Q );
+          $dbh->Insert( $table, \%Q, sub { my ($newid, $dbh) = @_; … } );
 
 Execute SQL query:
 
@@ -1042,7 +1056,7 @@ Return C<< $dbh->{mysql_insertid} >> on success or C<undef> on error.
 
 It's B<strongly recommended> to always use
 
- Insert( …, { %Q, …, primary_key_name=>undef }, … )
+ $dbh->Insert( …, { %Q, …, primary_key_name=>undef }, … )
 
 because if you didn't force C<primary_key> field to be C<NULL> in SQL (and
 thus use C<AUTO_INCREMENT> value) then user may send CGI parameter to set
@@ -1052,8 +1066,8 @@ more records can be added using C<AUTO_INCREMENT> into this table.
 
 =head3 InsertIgnore
 
- $rv = InsertIgnore( $table, \%Q );
-       InsertIgnore( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = $dbh->InsertIgnore( $table, \%Q );
+       $dbh->InsertIgnore( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
 
 Execute SQL query:
 
@@ -1064,8 +1078,8 @@ Return C<$rv> (true on success or C<undef> on error).
 
 =head3 Update
 
- $rv = Update( $table, \%Q );
-       Update( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = $dbh->Update( $table, \%Q );
+       $dbh->Update( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
 
 Execute SQL query:
 
@@ -1082,8 +1096,8 @@ To use with empty C<WHERE> part require C<< {__force=>1} >> in C<%Q>.
 
 =head3 Replace
 
- $rv = Replace( $table, \%Q );
-       Replace( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = $dbh->Replace( $table, \%Q );
+       $dbh->Replace( $table, \%Q, sub { my ($rv, $dbh) = @_; … } );
 
 Execute SQL query:
 
@@ -1096,12 +1110,12 @@ Return C<$rv> (true on success or C<undef> on error).
 
 =head3 Delete
 
- $rv = Delete( $table,   \%Q );
-       Delete( $table,   \%Q, sub { my ($rv, $dbh) = @_; … } );
- $rv = Delete( \@tables, \%Q );
-       Delete( \@tables, \%Q, sub { my ($rv, $dbh) = @_; … } );
- $rv = Delete( undef,    \%Q );
-       Delete( undef,    \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = $dbh->Delete( $table,   \%Q );
+       $dbh->Delete( $table,   \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = $dbh->Delete( \@tables, \%Q );
+       $dbh->Delete( \@tables, \%Q, sub { my ($rv, $dbh) = @_; … } );
+ $rv = $dbh->Delete( undef,    \%Q );
+       $dbh->Delete( undef,    \%Q, sub { my ($rv, $dbh) = @_; … } );
 
 Execute SQL query:
 
@@ -1121,12 +1135,12 @@ so some tables may not be processed in this case.
 
 =head3 ID
 
- $id = ID( $table,   \%Q );
- @id = ID( $table,   \%Q );
-       ID( $table,   \%Q, sub { my (@id) = @_; … } );
- $id = ID( \@tables, \%Q );
- @id = ID( \@tables, \%Q );
-       ID( \@tables, \%Q, sub { my (@id) = @_; … } );
+ $id = $dbh->ID( $table,   \%Q );
+ @id = $dbh->ID( $table,   \%Q );
+       $dbh->ID( $table,   \%Q, sub { my (@id) = @_; … } );
+ $id = $dbh->ID( \@tables, \%Q );
+ @id = $dbh->ID( \@tables, \%Q );
+       $dbh->ID( \@tables, \%Q, sub { my (@id) = @_; … } );
 
 Return result of executing this SQL query using L</Col>:
 
@@ -1136,10 +1150,10 @@ Return result of executing this SQL query using L</Col>:
 
 =head3 Count
 
- $count = Count( $table,   \%Q );
-          Count( $table,   \%Q, sub { my ($count) = @_; … } );
- $count = Count( \@tables, \%Q );
-          Count( \@tables, \%Q, sub { my ($count) = @_; … } );
+ $count = $dbh->Count( $table,   \%Q );
+          $dbh->Count( $table,   \%Q, sub { my ($count) = @_; … } );
+ $count = $dbh->Count( \@tables, \%Q );
+          $dbh->Count( \@tables, \%Q, sub { my ($count) = @_; … } );
 
 Return result of executing this SQL query using L</Col>:
 
@@ -1148,12 +1162,12 @@ Return result of executing this SQL query using L</Col>:
 
 =head3 Select
 
- $row  = Select( $table,   \%Q );
- @rows = Select( $table,   \%Q );
-         Select( $table,   \%Q, sub { my (@rows) = @_; … } );
- $row  = Select( \@tables, \%Q );
- @rows = Select( \@tables, \%Q );
-         Select( \@tables, \%Q, sub { my (@rows) = @_; … } );
+ $row  = $dbh->Select( $table,   \%Q );
+ @rows = $dbh->Select( $table,   \%Q );
+         $dbh->Select( $table,   \%Q, sub { my (@rows) = @_; … } );
+ $row  = $dbh->Select( \@tables, \%Q );
+ @rows = $dbh->Select( \@tables, \%Q );
+         $dbh->Select( \@tables, \%Q, sub { my (@rows) = @_; … } );
 
 Execute one of these SQL queries (depending on using C<__group> command):
 
@@ -1177,8 +1191,8 @@ context or L</Row> when called in scalar context.
 
 =head3 All
 
- @rows = All( $sql, @bind )
-         All( $sql, @bind, sub { my (@rows) = @_; … } );
+ @rows = $dbh->All( $sql, @bind )
+         $dbh->All( $sql, @bind, sub { my (@rows) = @_; … } );
 
 Shortcut for this ugly but very useful snippet:
 
@@ -1187,8 +1201,8 @@ Shortcut for this ugly but very useful snippet:
 
 =head3 Row
 
- $row = Row( $sql, @bind );
-        Row( $sql, @bind, sub { my ($row) = @_; … } );
+ $row = $dbh->Row( $sql, @bind );
+        $dbh->Row( $sql, @bind, sub { my ($row) = @_; … } );
 
 Shortcut for:
 
@@ -1202,9 +1216,9 @@ and L</Col>.
 
 =head3 Col
 
- $col = Col( $sql, @bind );
- @col = Col( $sql, @bind );
-        Col( $sql, @bind, sub { my (@col) = @_; … } );
+ $col = $dbh->Col( $sql, @bind );
+ @col = $dbh->Col( $sql, @bind );
+        $dbh->Col( $sql, @bind, sub { my (@col) = @_; … } );
 
 Shortcut for:
 
@@ -1214,8 +1228,8 @@ Shortcut for:
 
 =head3 SecureCGICache
 
- $cache = SecureCGICache();
- $cache = SecureCGICache( $new_cache );
+ $cache = $dbh->SecureCGICache();
+ $cache = $dbh->SecureCGICache( $new_cache );
 
 Fetch (or set when C<$new_cache> given) C<HASHREF> with cached results of
 "C<DESC tablename>" SQL queries for all tables used previous in any methods.
@@ -1231,10 +1245,10 @@ sense to share same cache for all C<$dbh>.
 
 =head3 TableInfo
 
- $cache = TableInfo( $table );
-          TableInfo( $table,   sub { my ($cache) = @_; … } );
- $cache = TableInfo( \@tables );
-          TableInfo( \@tables, sub { my ($cache) = @_; … } );
+ $cache = $dbh->TableInfo( $table );
+          $dbh->TableInfo( $table,   sub { my ($cache) = @_; … } );
+ $cache = $dbh->TableInfo( \@tables );
+          $dbh->TableInfo( \@tables, sub { my ($cache) = @_; … } );
 
 Ensure "C<DESC tablename>" for all C<$table> / C<@tables> is cached.
 
@@ -1243,8 +1257,8 @@ Return same as L</SecureCGICache> on success or C<undef> on error.
 
 =head3 ColumnInfo
 
- $desc = ColumnInfo( $table );
-         ColumnInfo( $table, sub { my ($desc) = @_; … } );
+ $desc = $dbh->ColumnInfo( $table );
+         $dbh->ColumnInfo( $table, sub { my ($desc) = @_; … } );
 
 Ensure "C<DESC $table>" is cached.
 
@@ -1252,15 +1266,13 @@ Return result of C<< $dbh->All("DESC $table") >> on success or C<undef> on
 error.
 
 
-=head1 __FUNCTIONS for fields
+=head2 __funcname functions for fields
 
 These functions can be added and replaced using L</DefineFunc>.
 
 Functions which can be used in C<%Q> as "C<fieldname_funcname>":
 
-=over
-
-=item B<eq>, B<ne>, B<lt>, B<gt>, B<le>, B<ge>
+=head3 eq, ne, lt, gt, le, ge
 
  field =  value     field IS NULL
  field != value     field IS NOT NULL
@@ -1287,12 +1299,12 @@ where
  "without undef": name__func=>$defined or name__func=>[@defined]
  "with    undef": name__func=>[@defined_and_not_defined]
 
-=item B<like>, B<not_like>
+=head3 like, not_like
 
  field LIKE value
  field NOT LIKE value
 
-=item B<date_eq>, B<date_ne>, B<date_lt>, B<date_gt>, B<date_le>, B<date_ge>
+=head3 date_eq, date_ne, date_lt, date_gt, date_le, date_ge
 
  field =  DATE_ADD(NOW(), INTERVAL value)
  field != DATE_ADD(NOW(), INTERVAL value)
@@ -1305,7 +1317,7 @@ value must match:
 
  /^-?\d+ (?:SECOND|MINUTE|HOUR|DAY|MONTH|YEAR)$/
 
-=item B<set_add>
+=head3 set_add
 
  field = field + value
 
@@ -1313,7 +1325,7 @@ When used in L</Update> it will be in C<SET> instead of C<WHERE>.
 It doesn't make sense to use this function with L</Insert>,
 L</InsertIgnore> or L</Replace>.
 
-=item B<set_date>
+=head3 set_date
 
  field = NOW()
  field = DATE_ADD(NOW(), INTERVAL value)
@@ -1323,8 +1335,6 @@ C<NOW()> else it will use C<DATE_ADD(…)>.
 
 When used in L</Insert>, L</InsertIgnore>, L</Update> and L</Replace> it
 will be in C<SET>.
-
-=back
 
 
 =head1 BUGS AND LIMITATIONS

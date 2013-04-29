@@ -6,6 +6,8 @@ WriteMakefile
   'NAME' => 'DBIx::SecureCGI',
   'VERSION_FROM' => 'lib/DBIx/SecureCGI.pm',
   'PREREQ_PM' => {
+                   'AnyEvent' => 0,
+                   'AnyEvent::DBI::MySQL' => '1.000002',
                    'DBD::mysql' => 0,
                    'DBI' => 0,
                    'version' => '0.77'
