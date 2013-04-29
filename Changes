@@ -1,5 +1,9 @@
 Revision history for DBIx-SecureCGI
 
+2.0.1	Mon Apr 29 14:23:44 EEST 2013
+	fix test
+	fix Build.PL
+
 2.0.0	Fri Apr 26 21:43:13 EEST 2013
 	Initial public release.
 	Module renamed to DBIx::SecureCGI.

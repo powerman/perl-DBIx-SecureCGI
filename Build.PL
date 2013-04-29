@@ -49,7 +49,7 @@ my $builder = $class->new(
 $builder->create_build_script();
 
 my $default_db = q{test};
-if (`echo "show tables" | mysql -u test \Q$default_db\E 2>&1` !~ /Tables_in_test/ms) {
+if (`echo "show variables" | mysql -u test \Q$default_db\E 2>&1` !~ /Variable_name/ms) {
     $default_db = q{};
 }
 my ($db, $login, $pass) = (q{}, q{}, q{});
