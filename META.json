@@ -1,0 +1,44 @@
+{
+   "abstract" : "Secure conversion of CGI params hash to SQL",
+   "author" : [
+      "Alex Efros <powerman@cpan.org>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4003, CPAN::Meta::Converter version 2.120921",
+   "license" : [
+      "mit"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "DBIx-SecureCGI",
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "Module::Build" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "DBD::mysql" : "0",
+            "DBI" : "0",
+            "perl" : "v5.10.0",
+            "version" : "0.77"
+         }
+      }
+   },
+   "provides" : {
+      "DBIx::SecureCGI" : {
+         "file" : "lib/DBIx/SecureCGI.pm",
+         "version" : "v2.0.0"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "license" : [
+         "http://www.opensource.org/licenses/mit-license.php"
+      ]
+   },
+   "version" : "v2.0.0"
+}
