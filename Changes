@@ -1,5 +1,8 @@
 Revision history for DBIx-SecureCGI
 
+2.0.4   Fri May 10 15:07:07 EEST 2013
+	fix tests
+
 2.0.3	Tue Apr 30 02:52:19 EEST 2013
 	improve doc
 

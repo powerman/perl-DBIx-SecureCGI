@@ -15,7 +15,7 @@ name: DBIx-SecureCGI
 provides:
   DBIx::SecureCGI:
     file: lib/DBIx/SecureCGI.pm
-    version: v2.0.3
+    version: v2.0.4
 requires:
   AnyEvent: 0
   AnyEvent::DBI::MySQL: 1.000002
@@ -25,4 +25,4 @@ requires:
   version: 0.77
 resources:
   license: http://www.opensource.org/licenses/mit-license.php
-version: v2.0.3
+version: v2.0.4

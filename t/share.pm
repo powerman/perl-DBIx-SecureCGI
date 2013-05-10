@@ -30,6 +30,9 @@ sub import {
 }
 
 chomp(my ($db, $login, $pass) = `cat t/.answers`);
+if ($db eq q{}) {
+    plan skip_all => 'No database provided for testing';
+}
 my $dbh = new_dbh();
 my @new_tables;
 
