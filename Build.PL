@@ -1,3 +1,4 @@
+use 5.010;
 use strict;
 use warnings;
 use Module::Build;
@@ -25,7 +26,7 @@ my $builder = $class->new(
         'Module::Build'         => 0,
     },
     requires => {
-        'perl'                  => '5.10.0',
+        'perl'                  => 5.010,
         'version'               => '0.77',
         'DBI'                   => 0,
         'DBD::mysql'            => 0,
@@ -42,7 +43,6 @@ my $builder = $class->new(
         'Pod::Coverage'         => '0.18',
     },
 #     add_to_cleanup     => [ 'DBIx-SecureCGI-*' ],
-    create_makefile_pl => 'traditional',
 );
 
 $builder->create_build_script();
