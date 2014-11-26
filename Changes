@@ -1,5 +1,8 @@
 Revision history for DBIx-SecureCGI
 
+2.0.6   Wed Nov 26 07:02:54 EET 2014
+	fix tests portability
+
 2.0.5   Mon May 20 18:51:55 EEST 2013
 	improve compatibility with CPAN Testers
 

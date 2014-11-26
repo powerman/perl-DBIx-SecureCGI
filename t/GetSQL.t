@@ -97,12 +97,12 @@ ok $SQL = $dbh->GetSQL($table3, {
     id_t1__eq       => undef,       # {Where} contain 'IS NULL'
     d__set_date     => 'NOW',       # set_ functions in {Set}
 });
-is $SQL->{Set}, 
-    "`$table3`.`d` = NOW(), `$table3`.`id_t2` = NULL, `$table3`.`id_t3` = '10'";
-is $SQL->{Where},
-    "`$table3`.`id_t2` IS NULL AND `$table3`.`id_t1` IS NULL AND `$table3`.`id_t3` = '10'";
-is $SQL->{UpdateWhere},
-    "`$table3`.`id_t1` IS NULL AND `$table3`.`id_t3` = '10'";
+is_deeply [sort split /, /, $SQL->{Set}],
+    [sort split /, /, "`$table3`.`d` = NOW(), `$table3`.`id_t2` = NULL, `$table3`.`id_t3` = '10'"];
+is_deeply [sort split / AND /, $SQL->{Where}],
+    [sort split / AND /, "`$table3`.`id_t2` IS NULL AND `$table3`.`id_t1` IS NULL AND `$table3`.`id_t3` = '10'"];
+is_deeply [sort split / AND /, $SQL->{UpdateWhere}],
+    [sort split / AND /, "`$table3`.`id_t1` IS NULL AND `$table3`.`id_t3` = '10'"];
 
 # {Order}, {Group}
 ok $SQL = $dbh->GetSQL($table3, {

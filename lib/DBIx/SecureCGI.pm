@@ -6,7 +6,7 @@ use utf8;
 use feature ':5.10';
 use Carp;
 
-use version; our $VERSION = qv('2.0.5');    # REMINDER: update Changes
+use version; our $VERSION = qv('2.0.6');    # REMINDER: update Changes
 
 # REMINDER: update dependencies in Build.PL
 use DBI;
@@ -96,7 +96,7 @@ sub DefineFunc {
     return;
 }
 
-sub _ret { ## no critic (RequireArgUnpacking)
+sub _ret {
     my $cb = shift;
     if ($cb) {
         return $cb->(@_);
@@ -1400,7 +1400,7 @@ Nikita Savin  C<< <nikita@asdfGroup.com> >>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2002-2013 Alex Efros <powerman@cpan.org>.
+Copyright 2002-2014 Alex Efros <powerman@cpan.org>.
 
 This program is distributed under the MIT (X11) License:
 L<http://www.opensource.org/licenses/mit-license.php>
