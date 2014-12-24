@@ -16,7 +16,7 @@
    "prereqs" : {
       "configure" : {
          "requires" : {
-            "Module::Build" : "0"
+            "Module::Build" : "0.4004"
          }
       },
       "runtime" : {
@@ -44,7 +44,7 @@
    "provides" : {
       "DBIx::SecureCGI" : {
          "file" : "lib/DBIx/SecureCGI.pm",
-         "version" : "v2.0.6"
+         "version" : "v2.0.7"
       }
    },
    "release_status" : "stable",
@@ -53,5 +53,5 @@
          "http://www.opensource.org/licenses/mit-license.php"
       ]
    },
-   "version" : "v2.0.6"
+   "version" : "v2.0.7"
 }

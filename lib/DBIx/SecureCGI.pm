@@ -6,7 +6,7 @@ use utf8;
 use feature ':5.10';
 use Carp;
 
-use version; our $VERSION = qv('2.0.6');    # REMINDER: update Changes
+use version; our $VERSION = qv('2.0.7');    # REMINDER: update Changes
 
 # REMINDER: update dependencies in Build.PL
 use DBI;
