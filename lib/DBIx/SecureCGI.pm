@@ -1,15 +1,14 @@
 package DBIx::SecureCGI;
-
+use 5.010001;
 use warnings;
 use strict;
 use utf8;
-use feature ':5.10';
 use Carp;
 
-use version; our $VERSION = qv('2.0.7');    # REMINDER: update Changes
+our $VERSION = 'v2.0.7';
 
-# REMINDER: update dependencies in Build.PL
 use DBI;
+use List::Util qw( any );
 
 
 ## no critic (ProhibitPostfixControls Capitalization ProhibitEnumeratedClasses)
@@ -173,7 +172,7 @@ sub _set_column_info {
 sub DBI::db::TableInfo {
     my ($dbh, $tables, $cb) = @_;
     my @tables = ref $tables eq 'ARRAY' ? @{$tables} : ($tables);
-    if (!@tables || grep {/\A\z|\s/ms} @tables) {
+    if (!@tables || any {/\A\z|\s/ms} @tables) {
         return _ret($cb, $dbh->set_err($DBI::stderr, "bad tables: [@tables]\n", undef, 'TableInfo'));
     }
 
@@ -204,7 +203,7 @@ sub DBI::db::TableInfo {
 sub DBI::db::GetSQL {
     my ($dbh, $tables, $P, $cb) = @_;
     # remove possible JOIN info from table names for TableInfo()
-    my @tables = map {my $s=$_;$s=~s/\s.*//ms;$s} ref $tables ? @{$tables} : $tables; ## no critic
+    my @tables = map {my $s=$_;$s=~s/\s.*//ms;$s} ref $tables ? @{$tables} : $tables; ## no critic (ProhibitComplexMappings)
     if (!$cb) {
         my $cache = $dbh->TableInfo(\@tables);
         return _get_sql($dbh, $cache, $tables, $P);
@@ -224,11 +223,13 @@ sub _get_sql { ## no critic (ProhibitExcessComplexity)
     # Extract JOIN type info from table names
     my (@tables, @jointype);
     for (ref $tables eq 'ARRAY' ? @{$tables} : $tables) {
-        if (!/\A(\S+)(?:\s+(LEFT|INNER))?\s*\z/msi) {
+        if (/\A(\S+)(?:\s+(LEFT|INNER))?\s*\z/msi) {
+            push @tables, $1;
+            push @jointype, $2 // 'INNER';
+        }
+        else {
             return _ret($cb, $dbh->set_err($DBI::stderr, "unknown join type: $_\n", undef, 'GetSQL'));
         }
-        push @tables, $1;
-        push @jointype, $2 // 'INNER';
     }
 
     my %SQL = (
@@ -247,7 +248,7 @@ sub _get_sql { ## no critic (ProhibitExcessComplexity)
 
     # Detect keys which should be used for JOINing tables
     $SQL{From} = $dbh->quote_identifier($tables[0]);
-    my @field = map {{ map {$_->{Field}=>1} @{ $cache->{$_} } }} @tables; ## no critic
+    my @field = map {{ map {$_->{Field}=>1} @{ $cache->{$_} } }} @tables;   ## no critic (ProhibitComplexMappings,ProhibitVoidMap)
 TABLE:
     for my $right (1..$#tables) {
         ## no critic (ProhibitAmbiguousNames)
@@ -579,6 +580,11 @@ __END__
 DBIx::SecureCGI - Secure conversion of CGI params hash to SQL
 
 
+=head1 VERSION
+
+This document describes DBIx::SecureCGI version v2.0.7
+
+
 =head1 SYNOPSIS
 
  #--- sync
@@ -840,7 +846,7 @@ so it's safer to deny it.
 
 =back
 
-=head2 Hash to SQL convertion rules
+=head2 Hash to SQL conversion rules
 
 =head3 __commandname
 
@@ -1337,9 +1343,7 @@ When used in L</Insert>, L</InsertIgnore>, L</Update> and L</Replace> it
 will be in C<SET>.
 
 
-=head1 BUGS AND LIMITATIONS
-
-No bugs have been reported.
+=head1 LIMITATIONS
 
 Only MySQL supported.
 
@@ -1363,66 +1367,63 @@ or C<'id_user__eq'> CGI params.
 
 =head1 SUPPORT
 
-Please report any bugs or feature requests through the web interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=DBIx-SecureCGI>.
-I will be notified, and then you'll automatically be notified of progress
-on your bug as I make changes.
+=head2 Bugs / Feature Requests
 
-You can also look for information at:
+Please report any bugs or feature requests through the issue tracker
+at L<https://github.com/powerman/perl-DBIx-SecureCGI/issues>.
+You will be notified automatically of any progress on your issue.
+
+=head2 Source Code
+
+This is open source software. The code repository is available for
+public review and contribution under the terms of the license.
+Feel free to fork the repository and submit pull requests.
+
+L<https://github.com/powerman/perl-DBIx-SecureCGI>
+
+    git clone https://github.com/powerman/perl-DBIx-SecureCGI.git
+
+=head2 Resources
 
 =over
 
-=item * RT: CPAN's request tracker
+=item * MetaCPAN Search
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=DBIx-SecureCGI>
+L<https://metacpan.org/search?q=DBIx-SecureCGI>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/dist/DBIx-SecureCGI>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
 L<http://annocpan.org/dist/DBIx-SecureCGI>
 
-=item * CPAN Ratings
+=item * CPAN Testers Matrix
 
-L<http://cpanratings.perl.org/d/DBIx-SecureCGI>
+L<http://matrix.cpantesters.org/?dist=DBIx-SecureCGI>
 
-=item * Search CPAN
+=item * CPANTS: A CPAN Testing Service (Kwalitee)
 
-L<http://search.cpan.org/dist/DBIx-SecureCGI/>
+L<http://cpants.cpanauthors.org/dist/DBIx-SecureCGI>
 
 =back
 
 
 =head1 AUTHORS
 
-Alex Efros  C<< <powerman@cpan.org> >>
+Alex Efros E<lt>powerman@cpan.orgE<gt>
 
-Nikita Savin  C<< <nikita@asdfGroup.com> >>
+Nikita Savin E<lt>asdfgroup@gmail.comE<gt>
 
 
-=head1 LICENSE AND COPYRIGHT
+=head1 COPYRIGHT AND LICENSE
 
-Copyright 2002-2014 Alex Efros <powerman@cpan.org>.
+This software is Copyright (c) 2002-2014 by Alex Efros E<lt>powerman@cpan.orgE<gt>.
 
-This program is distributed under the MIT (X11) License:
-L<http://www.opensource.org/licenses/mit-license.php>
+This is free software, licensed under:
 
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation
-files (the "Software"), to deal in the Software without
-restriction, including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following
-conditions:
+  The MIT (X11) License
 
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
-
+=cut

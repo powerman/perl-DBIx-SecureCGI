@@ -1,10 +1,11 @@
 package t::share;
+use 5.010001;
 use warnings;
 use strict;
 use utf8;
-use feature ':5.10';
 use Test::More;
 use Test::Exception;
+use Test::Database;
 use DBI;
 use DBIx::SecureCGI;
 use AnyEvent::DBI::MySQL;
@@ -29,21 +30,18 @@ sub import {
     *{$pkg.'::'.$_} = \$$_ for qw( PK );
 }
 
-chomp(my ($db, $login, $pass) = `cat t/.answers`);
-if ($db eq q{}) {
-    plan skip_all => 'No database provided for testing';
-}
+my $h = Test::Database->handle('mysql') or plan skip_all => '~/.test-database not configured';
 my $dbh = new_dbh();
 my @new_tables;
 
 sub new_dbh {
     my ($attr) = @_;
-    return DBI->connect('dbi:mysql:'.$db, $login, $pass, $attr);
+    return DBI->connect($h->connection_info, $attr);
 }
 
 sub new_adbh {
     my ($attr) = @_;
-    return AnyEvent::DBI::MySQL->connect('dbi:mysql:'.$db, $login, $pass, $attr);
+    return AnyEvent::DBI::MySQL->connect($h->connection_info, $attr);
 }
 
 sub new_table {
