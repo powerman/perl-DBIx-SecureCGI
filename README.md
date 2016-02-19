@@ -7,7 +7,7 @@ DBIx::SecureCGI - Secure conversion of CGI params hash to SQL
 
 # VERSION
 
-This document describes DBIx::SecureCGI version v2.0.7
+This document describes DBIx::SecureCGI version v3.0.0
 
 # SYNOPSIS
 

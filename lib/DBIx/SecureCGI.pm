@@ -5,7 +5,7 @@ use strict;
 use utf8;
 use Carp;
 
-our $VERSION = 'v2.0.7';
+our $VERSION = 'v3.0.0';
 
 use DBI;
 use List::Util qw( any );
@@ -582,7 +582,7 @@ DBIx::SecureCGI - Secure conversion of CGI params hash to SQL
 
 =head1 VERSION
 
-This document describes DBIx::SecureCGI version v2.0.7
+This document describes DBIx::SecureCGI version v3.0.0
 
 
 =head1 SYNOPSIS

@@ -1,6 +1,8 @@
 Revision history for DBIx-SecureCGI
 
 {{$NEXT}}
+
+v3.0.0  2016-02-19 16:51:53 EET
 	- Switch to Dist::Milla.
 	- Use Test::Database.
 
