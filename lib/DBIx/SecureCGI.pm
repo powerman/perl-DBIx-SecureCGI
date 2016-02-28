@@ -1419,7 +1419,7 @@ Nikita Savin E<lt>asdfgroup@gmail.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2002-2014 by Alex Efros E<lt>powerman@cpan.orgE<gt>.
+This software is Copyright (c) 2002- by Alex Efros E<lt>powerman@cpan.orgE<gt>.
 
 This is free software, licensed under:
 
